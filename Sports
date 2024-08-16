@@ -1,0 +1,150 @@
+//Design subscription-based sports website which can display scores, game status, history for any games.
+
+class User {
+    private String userId;
+    private String name;
+    private String email;
+    private Subscription subscription;
+}
+
+interface Subscription
+{
+    void showFeatures();
+}
+
+class BasicSub implements Subscription
+{
+    @Override
+    public void showFeatures()
+    {
+        System.out.println("basic");
+    }
+}
+
+class Premium implements Subscription
+{
+    @Override
+    public void showFeatures()
+    {
+        System.out.println("Premium");
+    }
+}
+
+class UserService 
+{
+    Map<String,User> users = new HashMap<>();
+    
+    public void addUser(User user)
+    {
+        if(user!=null && user.userid>0)
+        {
+            users.put(userid,user);
+            System.out.println("User is added success");
+        }else{
+            throw new IllegalStateException("user empty");
+        }
+          
+    }
+    
+    public User getUser(String userid)
+    {
+        return users.get(userid);
+    }
+}
+
+
+interface Game
+{
+    String getGameStatus();
+    String getGameId();
+
+    //team , score
+    Map<String,Integer> showScores();
+    
+    void updateScore(String team, Integer score);
+    
+}
+
+class FootballGame implements Game 
+{
+    private String gameId;
+    private String status;
+    private Map<String, Integer> scores;
+    
+    public FootballGame(String gameId)
+    {
+        this.gameId = gameId;
+        this.status="scheduled";
+        scores = new HashMap<>();
+    }
+    
+    
+    @Override
+    public void updateScore(String team, int score) 
+    {
+        scores.put(team, score);
+    }
+    
+    @Override
+    public String getGameStatus()
+    {
+        return status;
+        
+    }
+    
+    @Override
+    public String getGameId() {
+        return gameId;
+    }
+    
+    @Override
+    public Map<String, Integer> getScores() {
+        return scores;
+    }
+    
+}
+
+
+class GameFactory 
+{
+    public void createGame(String type, String gameId)
+    {
+       if ("football".equalsIgnoreCase(type)) {
+            return new FootballGame(gameId);
+        } else if ("basketball".equalsIgnoreCase(type)) {
+            return new BasketballGame(gameId);
+        }
+        // Add more games as needed
+        throw new IllegalArgumentException("Unknown game type");
+    }
+}
+
+class ScoreBoard
+{
+    Map<String, Game> scoreBoard = new HashMap<>();
+    
+    public addGame(String gameId, Game game)
+    {
+        scoreBoard.put(gameId,game);
+    }
+    
+    public void displayScores(String gameId)
+    {
+        Game game = scoreBoard.get(gameId);
+        if(game!=null)
+        {
+            game.showScores();
+        }else{
+           System.out.println("Game not found!");
+
+        }
+    }
+    
+}
+
+public class Main
+{
+    public static void main(String[] args) {
+        System.out.println("Welcome to Online IDE!! Happy Coding :)");
+    }
+}
