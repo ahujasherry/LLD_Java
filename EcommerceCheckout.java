@@ -1,5 +1,37 @@
 import java.util.*;
 
+class ErrorMessages 
+{
+  private static final Map<String, Map<String, String>> errorMessages = new HashMap<>();
+
+  static{
+     
+     Map<String, String> en = new HashMap<>();
+        en.put("INVALID_CARD", "Your credit card is invalid.");
+        en.put("INSUFFICIENT_FUNDS", "You have insufficient funds.");
+
+        Map<String, String> fr = new HashMap<>();
+        fr.put("INVALID_CARD", "Votre carte de cr\u00E9dit est invalide.");
+        fr.put("INSUFFICIENT_FUNDS", "Vous n'avez pas assez de fonds.");
+
+        Map<String, String> es = new HashMap<>();
+        es.put("INVALID_CARD", "Su tarjeta de cr\u00E9dito no es v\u00E1lida.");
+        es.put("INSUFFICIENT_FUNDS", "No tiene fondos suficientes.");
+
+        errorMessages.put("US", en);
+        errorMessages.put("FR", fr);
+        errorMessages.put("ES", es);
+  }
+
+
+    public static String getMessage(String countryCode, String errorKey) 
+    {
+        return errorMessages.get(countryCode).get(errorKey);
+
+    }
+}
+
+
 class Product {
     private int id;
     private String name;
@@ -53,17 +85,59 @@ class Order_Item {
 }
 
 interface PaymentStrategy {
-    void pay(double amount);
+    void pay(double amount) throws PaymentException;
+    void validatePayment() throws PaymentException;
 }
 
-class CreditCard implements PaymentStrategy {
-    public void pay(double amount) {
+class CreditCard implements PaymentStrategy 
+{
+    private boolean isValidCard;
+    
+     public CreditCard(boolean isValidCard) {
+        this.isValidCard = isValidCard;
+    }
+
+     @Override
+    public void pay(double amount) throws PaymentException 
+    { 
+
+        this.validatePayment();
         System.out.println("Paid using Credit Card: $" + amount);
     }
+
+     @Override
+    public void validatePayment() throws PaymentException
+    {
+      if(!isValidCard)
+      {
+        throw new PaymentException("INVALID_CARD");
+      }
+        
+    }
+
+
 }
 
-class PayPal implements PaymentStrategy {
-    public void pay(double amount) {
+class PayPal implements PaymentStrategy 
+{
+    private boolean hasSufficientBalance;
+
+    public PayPal(boolean hasSufficientBalance) 
+    {
+        this.hasSufficientBalance = hasSufficientBalance;
+    }
+
+    @Override
+    public void validatePayment() throws PaymentException {
+        if (!hasSufficientBalance) {
+            throw new PaymentException("INSUFFICIENT_FUNDS");
+        }
+    }
+
+    @Override
+    public void pay(double amount) throws PaymentException
+    {
+        this.validatePayment();
         System.out.println("Paid using PayPal: $" + amount);
     }
 }
@@ -96,6 +170,16 @@ class PercentageDiscount implements DiscountStrategy {
     }
 }
 
+class PaymentException extends Exception
+{
+  public PaymentException(String message)
+  {
+    super(message);
+  }
+}
+
+
+
 class Order {
     private int orderId;
     private List<Order_Item> items;
@@ -126,13 +210,16 @@ class Checkout {
     private DiscountStrategy discountStrategy;
     private PaymentStrategy paymentStrategy;
     private double deliveryCharge;
+    private String userCountry;
 
     public Checkout(Order order, DiscountStrategy discountStrategy,
-                    PaymentStrategy paymentStrategy, double deliveryCharge) {
+                    PaymentStrategy paymentStrategy, double deliveryCharge
+                    ,String userCountry) {
         this.order = order;
         this.discountStrategy = discountStrategy;
         this.paymentStrategy = paymentStrategy;
         this.deliveryCharge = deliveryCharge;
+        this.userCountry= userCountry;
     }
 
     public double calculateFinalPrice() {
@@ -143,10 +230,11 @@ class Checkout {
         double finalPrice = discountedPrice * 1.13;
         finalPrice += deliveryCharge; // Add delivery fee
 
-        return finalPrice;
+        return Math.round(finalPrice*100.0)/100.0;
     }
 
-    public String doCheckout() {
+    public String doCheckout() 
+    {
         try {
             double finalAmount = calculateFinalPrice();
             paymentStrategy.pay(finalAmount);
@@ -156,9 +244,13 @@ class Checkout {
                     + address.getCity() + ", " + address.getCountry());
 
             return "Checkout Success!";
-        } catch (Exception e) {
-            return "Checkout Failed: " + e.getMessage();
+        } catch (PaymentException e) {
+           String errorMsg = ErrorMessages.getMessage(userCountry, e.getMessage());
+           System.out.println("Payment failed: " + errorMsg);
+
         }
+
+        return "Failed";
     }
 }
 
@@ -174,18 +266,31 @@ public class EcommerceCheckout {
 
         ShippingAddress address = new ShippingAddress("123 Main St", "New York", "USA", "10001");
 
+
+        System.out.println("Order 1 usng CC----");
         Order order = new Order(1, items, address);
         double totalPrice = order.calculateTotalPrice();
-        System.out.println("Total price of order: $" + totalPrice);
+        System.out.println("Total price $" + totalPrice);
 
-        PaymentStrategy paymentStrategy = new CreditCard();
+        PaymentStrategy paymentStrategy = new CreditCard(true);
         DiscountStrategy discountStrategy = new PercentageDiscount(0.10); // 10% discount
-        Checkout checkout = new Checkout(order, discountStrategy, paymentStrategy, 10.0);
+        Checkout checkout1 = new Checkout(order, discountStrategy, paymentStrategy, 10.0,"US");
 
-        double finalPrice = checkout.calculateFinalPrice();
+        double finalPrice = checkout1.calculateFinalPrice();
         System.out.println("Final price after discount & tax: $" + finalPrice);
 
-        String result = checkout.doCheckout();
+        String result = checkout1.doCheckout();
+        System.out.println(result);
+
+
+        System.out.println("Order 1 using Paypal ----");
+        paymentStrategy = new PayPal(false);
+        Checkout checkout2 = new Checkout(order, discountStrategy, paymentStrategy, 10.0,"FR");
+
+        finalPrice = checkout2.calculateFinalPrice();
+        System.out.println("Final price after discount & tax: $" + finalPrice);
+
+        result = checkout2.doCheckout();
         System.out.println(result);
     }
 }
